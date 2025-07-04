@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 const typeColors = {
     fire: "bg-[#F08030]",
     water: "bg-[#6890F0]",
@@ -19,17 +21,23 @@ const typeColors = {
     fighting: "bg-[#C03028]",
 };
 
-
-const Pokemon = ({ name, image, id, types, height, weight, abilities }) => {
+const Pokemon = ({ name, image, id, types }) => {
     return (
-        <div className="w-48 bg-white rounded-xl shadow-md p-4 flex flex-col items-center gap-2 hover:cursor-pointer hover:shadow-lg">
+        <Link
+            to={`/pokemon/${id}`}
+            className="w-48 bg-white rounded-xl shadow-md p-4 flex flex-col items-center gap-2 hover:cursor-pointer hover:shadow-lg"
+        >
             <p className="text-sm font-black font-mono">#{id}</p>
             <img src={image} alt="Charmeleon" className="w-24 h-24 object-contain" />
-            <h2 className="text-lg font-bold">{name.toUpperCase()}</h2>
+            <h2 className="text-lg font-bold tracking-widest">
+                {name.toUpperCase()}
+            </h2>
             <div className="flex gap-2">
                 <span className='flex gap-1'>
                     {types.map(t => (
-                        <div className={`text-white px-3 py-1 rounded-full text-xs font-semibold ${typeColors[t.type.name]}`}
+                        <div 
+                        className={`text-white px-3 py-1 rounded-full text-xs font-semibold ${typeColors[t.type.name]}`}
+                        key={t.type.name}
                         >
                             {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
                         </div>
@@ -43,7 +51,7 @@ const Pokemon = ({ name, image, id, types, height, weight, abilities }) => {
                     ))}
                 </span> */}
             </div>
-        </div>
+        </Link>
 
     )
 }

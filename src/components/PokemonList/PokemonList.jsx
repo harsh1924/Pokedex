@@ -53,9 +53,6 @@ const PokemonList = () => {
                             id={pokemon.id}
                             key={pokemon.id}
                             types={pokemon.types}
-                            height={pokemon.height}
-                            weight={pokemon.weight}
-                            abilities={pokemon.abilities}
                         />
                     )}
             </div>

@@ -1,5 +1,6 @@
 import Pokedex from './components/Pokedex/Pokedex'
 import { motion } from "motion/react";
+import CustomRoutes from './routes/CustomRoutes';
 
 function App() {
 
@@ -26,7 +27,7 @@ function App() {
         </div>
       </div>
 
-      <Pokedex />
+      <CustomRoutes />
     </ >
   )
 }
