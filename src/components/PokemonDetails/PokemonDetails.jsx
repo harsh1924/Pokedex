@@ -24,6 +24,7 @@ const typeColors = {
 };
 
 const abilityColors = {
+    "illuminate": "bg-[#FFE96B]",
     "thick-fat": "bg-[#8CB7E0]",
     "stench": "bg-[#AA8131]",
     "drizzle": "bg-[#BD3481]",
@@ -252,7 +253,7 @@ export const PokemonDetails = () => {
                         <div className="flex gap-2 mb-4">
                             {pokemon.types?.slice(0, 10).map(t => (
                                 <div
-                                    className={`text-white px-3 py-1 rounded-full text-xs font-semibold ${typeColors[t.type.name]}`}
+                                    className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${typeColors[t.type.name]}`}
                                     key={t.type.name}
                                 >
                                     {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
@@ -274,7 +275,7 @@ export const PokemonDetails = () => {
                                     <strong>Abilities:</strong>
                                     {pokemon.abilities?.map(a => (
                                         <div
-                                            className={`px-3 py-1 rounded-full text-xs font-semibold ${abilityColors[a.ability.name]} text-white`}
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold ${abilityColors[a.ability.name]} text-white`}
                                             key={a.ability.slot}
                                         >
                                             {a.ability.name.charAt(0).toUpperCase() + a.ability.name.slice(1)}

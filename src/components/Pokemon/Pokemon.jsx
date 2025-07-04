@@ -36,20 +36,13 @@ const Pokemon = ({ name, image, id, types }) => {
                 <span className='flex gap-1'>
                     {types.map(t => (
                         <div 
-                        className={`text-white px-3 py-1 rounded-full text-xs font-semibold ${typeColors[t.type.name]}`}
+                        className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${typeColors[t.type.name]}`}
                         key={t.type.name}
                         >
                             {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
                         </div>
                     ))}
                 </span>
-                {/* <span>
-                    {abilities.map(ability => (
-                        <div className="">
-                            {ability.ability.name}
-                        </div>
-                    ))}
-                </span> */}
             </div>
         </Link>
 
