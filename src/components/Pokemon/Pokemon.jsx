@@ -20,9 +20,9 @@ const typeColors = {
 };
 
 
-const Pokemon = ({ name, image, id, types }) => {
+const Pokemon = ({ name, image, id, types, height, weight, abilities }) => {
     return (
-        <div className="w-48 bg-white rounded-xl shadow-md p-4 flex flex-col items-center gap-2">
+        <div className="w-48 bg-white rounded-xl shadow-md p-4 flex flex-col items-center gap-2 hover:cursor-pointer hover:shadow-lg">
             <p className="text-sm font-black font-mono">#{id}</p>
             <img src={image} alt="Charmeleon" className="w-24 h-24 object-contain" />
             <h2 className="text-lg font-bold">{name.toUpperCase()}</h2>
@@ -30,10 +30,18 @@ const Pokemon = ({ name, image, id, types }) => {
                 <span className='flex gap-1'>
                     {types.map(t => (
                         <div className={`text-white px-3 py-1 rounded-full text-xs font-semibold ${typeColors[t.type.name]}`}
-                    >
-                            {t.type.name}
+                        >
+                            {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
                         </div>
-                    ))}</span>
+                    ))}
+                </span>
+                {/* <span>
+                    {abilities.map(ability => (
+                        <div className="">
+                            {ability.ability.name}
+                        </div>
+                    ))}
+                </span> */}
             </div>
         </div>
 
