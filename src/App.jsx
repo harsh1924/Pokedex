@@ -1,6 +1,7 @@
 import Pokedex from './components/Pokedex/Pokedex'
 import { motion } from "motion/react";
 import CustomRoutes from './routes/CustomRoutes';
+import { Link } from 'react-router-dom';
 
 function App() {
 
@@ -9,7 +10,7 @@ function App() {
       <div
         className="h-[120px] flex items-center justify-center bg-white shadow-md"
       >
-        <div className="flex items-center gap-4 text-black text-4xl font-bold">
+        <Link to={'/'} className="flex items-center gap-4 text-black text-4xl font-bold">
           {/* Pokéball SVG with spin animation */}
           <motion.svg
             xmlns="http://www.w3.org/2000/svg"
@@ -23,8 +24,8 @@ function App() {
             <circle cx="128" cy="128" r="24" fill="white" stroke="black" strokeWidth="8" />
           </motion.svg>
 
-          Pokedex
-        </div>
+          Pokédex
+        </Link>
       </div>
 
       <CustomRoutes />

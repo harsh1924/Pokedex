@@ -6,7 +6,7 @@ const Pokedex = () => {
         <div className='flex flex-col py-10 gap-y-3 bg-[#e9eae5]'>
             <div className="mx-auto text-center">
                 <h1 className='font-bold font-serif text-xl'>
-                    Pokedex
+                    Pokédex
                 </h1>
                 <p className='mx-auto text-sm'>
                     Search for a Pokemon by name.

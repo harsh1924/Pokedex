@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
+import LoadingState from "../LoadingState";
 
 const typeColors = {
     fire: "bg-[#F08030]",
@@ -24,6 +25,7 @@ const typeColors = {
 };
 
 const abilityColors = {
+    "inner-focus": "bg-[#C7489D]",
     "illuminate": "bg-[#FFE96B]",
     "thick-fat": "bg-[#8CB7E0]",
     "stench": "bg-[#AA8131]",
@@ -195,10 +197,14 @@ const abilityColors = {
 export const PokemonDetails = () => {
     const { id } = useParams();
     const [pokemon, setPokemon] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const [relatedPokemon, setRelatedPokemon] = useState([]);
+    const [evolutionLine, setEvolutionLine] = useState([]);
 
     async function DownloadPokemon() {
         const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
-        console.log(response.data);
+        // console.log(response.data);
         const data = response.data;
         setPokemon({
             name: data.name,
@@ -210,104 +216,230 @@ export const PokemonDetails = () => {
             stats: data.stats,
             types: data.types
         });
+        setIsLoading(false);
     }
+
+    async function DownloadRelatedPokemon(typesArray) {
+        const allRelated = [];
+
+        for (const type of typesArray) {
+            const response = await axios.get(`https://pokeapi.co/api/v2/type/${type}`);
+            const data = response.data;
+
+            const related = data.pokemon.map(p => {
+                const urlParts = p.pokemon.url.split("/");
+                const id = urlParts[urlParts.length - 2];
+
+                return {
+                    name: p.pokemon.name,
+                    id,
+                    image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+                    type: type, // current type in this loop
+                };
+            });
+
+            allRelated.push(...related);
+        }
+
+        // Optionally remove duplicates by ID
+        const uniqueRelated = Array.from(new Map(allRelated.map(p => [p.id, p])).values());
+
+        setRelatedPokemon(uniqueRelated);
+    }
+
+    async function fetchEvolutionChain(pokemonName) {
+        try {
+            const speciesRes = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${pokemonName}`);
+            const evoChainUrl = speciesRes.data.evolution_chain.url;
+
+            const evoRes = await axios.get(evoChainUrl);
+            const chain = evoRes.data.chain;
+
+            const evolutionArray = [];
+            let current = chain;
+
+            while (current) {
+                const name = current.species.name;
+                const idMatch = current.species.url.match(/\/pokemon-species\/(\d+)\//);
+                const id = idMatch ? idMatch[1] : null;
+
+                evolutionArray.push({
+                    name,
+                    id,
+                    image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+                });
+
+                if (current.evolves_to.length > 0) {
+                    current = current.evolves_to[0]; // handle linear evolution for now
+                } else {
+                    current = null;
+                }
+            }
+
+            setEvolutionLine(evolutionArray);
+        } catch (err) {
+            console.error("Evolution fetch failed", err);
+        }
+    }
+
 
     useEffect(() => {
         DownloadPokemon();
+        if (pokemon.types) {
+            const typesArray = pokemon.types.map(t => t.type.name);
+            DownloadRelatedPokemon(typesArray);
+        }
+        fetchEvolutionChain(id);
     }, [pokemon])
     return (
         <>
-            <div className="max-w-3xl mx-auto mt-10 p-6 rounded-xl bg-white border border-gray-200">
-                <div className="flex flex-col md:flex-row gap-8">
-                    {/* Left: Image */}
-                    <div className="flex-1 flex flex-col items-center">
-                        <img
-                            src={pokemon.image}
-                            alt={pokemon.name}
-                            className="w-60 h-60 object-contain"
-                        />
-                        {/* Moves Section */}
-                        <div className="w-full mt-6">
-                            <h3 className="text-lg font-bold mb-2">Moves</h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto pr-1">
-                                {pokemon.moves?.slice(0, 20).map((m, index) => (
-                                    <div
-                                        key={index}
-                                        className="bg-gray-100 text-gray-800 rounded-md px-3 py-2 text-xs font-semibold capitalize shadow hover:bg-gray-200 transition cursor-pointer"
-                                    >
-                                        {m.move.name.replace(/-/g, " ")}
+            {isLoading ? <LoadingState /> :
+                <>
+                    <div className="mx-auto mt-10 p-6 rounded-xl bg-white border-gray-200">
+                        <div className="flex flex-col md:flex-row gap-8">
+                            {/* Left: Image */}
+                            <div className="flex-1 flex flex-col items-center">
+                                <img
+                                    src={pokemon.image}
+                                    alt={pokemon.name}
+                                    className="w-60 h-60 object-contain"
+                                />
+
+                                {/* Moves Section */}
+                                <div className="w-full mt-6">
+                                    <h3 className="text-lg font-bold mb-2">Moves</h3>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                                        {pokemon.moves?.slice(0, 24).map((m, index) => (
+                                            <div
+                                                key={index}
+                                                className="bg-gray-100 text-gray-800 rounded-md px-3 py-2 text-xs font-semibold capitalize shadow hover:bg-gray-200 transition cursor-pointer"
+                                            >
+                                                {m.move.name.replace(/-/g, " ")}
+                                            </div>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                    </div>
-
-                    {/* Right: Info */}
-                    <div className="flex-1">
-                        <h2 className="text-3xl font-bold capitalize mb-2">
-                            #{id.toString().padStart(3, "0")} {pokemon.name}
-                        </h2>
-
-                        {/* Types */}
-                        <div className="flex gap-2 mb-4">
-                            {pokemon.types?.slice(0, 10).map(t => (
-                                <div
-                                    className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${typeColors[t.type.name]}`}
-                                    key={t.type.name}
-                                >
-                                    {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
                                 </div>
-                            ))}
-                        </div>
 
-                        {/* About Section */}
-                        <div className="mb-4">
-                            <h3 className="font-bold text-lg mb-1">About</h3>
-                            <div className="text-sm text-gray-700 space-y-1">
-                                <p>
-                                    <strong>Height:</strong> {pokemon.height / 10} m
-                                </p>
-                                <p>
-                                    <strong>Weight:</strong> {pokemon.weight / 10} kg
-                                </p>
-                                <p className="flex gap-1">
-                                    <strong>Abilities:</strong>
-                                    {pokemon.abilities?.map(a => (
+                            </div>
+
+                            {/* Right: Info */}
+                            <div className="flex-1">
+                                <h2 className="text-3xl font-bold capitalize mb-2">
+                                    #{id.toString().padStart(3, "0")} {pokemon.name}
+                                </h2>
+
+                                {/* Types */}
+                                <div className="flex gap-2 mb-4">
+                                    {pokemon.types?.slice(0, 10).map(t => (
                                         <div
-                                            className={`px-3 py-1 rounded-md text-xs font-semibold ${abilityColors[a.ability.name]} text-white`}
-                                            key={a.ability.slot}
+                                            className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${typeColors[t.type.name]}`}
+                                            key={t.type.name}
                                         >
-                                            {a.ability.name.charAt(0).toUpperCase() + a.ability.name.slice(1)}
+                                            {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
                                         </div>
                                     ))}
-                                </p>
-                            </div>
-                        </div>
+                                </div>
 
-                        {/* Stats Section */}
-                        <div className="mt-21">
-                            <h3 className="font-bold text-lg mb-2">Base Stats</h3>
-                            <div className="space-y-2">
-                                {pokemon.stats?.map((stat, index) => (
-                                    <div key={index}>
-                                        <div className="flex justify-between text-sm font-medium text-gray-800">
-                                            <span className="uppercase">{stat.stat.name.replace('-', ' ')}</span>
-                                            <span>{stat.base_stat}</span>
+                                {/* About Section */}
+                                <div className="mb-4">
+                                    <h3 className="font-bold text-lg mb-1">About</h3>
+                                    <div className="text-sm text-gray-700 space-y-1">
+                                        <p>
+                                            <strong>Height:</strong> {pokemon.height / 10} m
+                                        </p>
+                                        <p>
+                                            <strong>Weight:</strong> {pokemon.weight / 10} kg
+                                        </p>
+                                        <div className="flex gap-1">
+                                            <strong>Abilities:</strong>
+                                            {pokemon.abilities?.map(a => (
+                                                <div
+                                                    className={`tracking-wider px-3 py-1 rounded-md text-xs font-semibold ${abilityColors[a.ability.name]} text-white`}
+                                                    key={a.ability.slot}
+                                                >
+                                                    {a.ability.name.charAt(0).toUpperCase() + a.ability.name.slice(1)}
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="w-full h-3 bg-gray-200 rounded">
-                                            <div
-                                                className="h-3 bg-orange-500 rounded"
-                                                style={{ width: `${Math.min(stat.base_stat, 100)}%` }}
-                                            ></div>
-                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stats Section */}
+                                <div className="mt-21">
+                                    <h3 className="font-bold text-lg mb-2">Base Stats</h3>
+                                    <div className="space-y-2">
+                                        {pokemon.stats?.map((stat, index) => (
+                                            <div key={index}>
+                                                <div className="flex justify-between text-sm font-medium text-gray-800">
+                                                    <span className="uppercase">{stat.stat.name.replace('-', ' ')}</span>
+                                                    <span>{stat.base_stat}</span>
+                                                </div>
+                                                <div className="w-full h-3 bg-gray-200 rounded">
+                                                    <div
+                                                        className="h-3 hover:shadow transition-all duration-300 ease-in-out cursor-pointer hover:shadow-orange-600 bg-orange-500 rounded"
+                                                        style={{ width: `${Math.min(stat.base_stat, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div >
+                    </div>
+                    {/* Evolution Line */}
+                    {evolutionLine.length > 1 && (
+                        <div className="mt-10">
+                            <h3 className="font-black text-4xl text-center">Evolution Line</h3>
+                            <div className="flex items-center justify-center gap-5 overflow-x-auto py-4">
+                                {evolutionLine.map((poke, index) => (
+                                    <div key={poke.name} className="flex items-center gap-5">
+                                        <Link
+                                            to={`/pokemon/${poke.id}`}
+                                            className="flex flex-col items-center group"
+                                            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                                        >
+                                            <img
+                                                src={poke.image}
+                                                alt={poke.name}
+                                                className={`w-16 h-16 object-contain mb-1 transition-transform duration-300 group-hover:scale-110 ${poke.id == id ? "ring-2 ring-orange-500" : ""}`}
+                                            />
+                                            <p className="text-sm capitalize font-medium">{poke.name}</p>
+                                        </Link>
+
+                                        {index < evolutionLine.length - 1 && (
+                                            <span className="text-2xl text-gray-400">→</span>
+                                        )}
                                     </div>
                                 ))}
                             </div>
+
                         </div>
+                    )}
+                    <h1 className="font-black text-4xl text-center my-5">
+                        Related Pokémon
+                    </h1>
+                    <div className="flex flex-wrap px-2 gap-5 justify-center bg-[#f3f7e6] py-4">
+                        {relatedPokemon?.map(p => (
+                            <Link
+                                to={`/pokemon/${p.id}`}
+                                key={p.name}
+                                className="w-32 text-centercursor-pointer"
+                                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                            >
+                                <div className={`text-white text-xs mt-1 px-2 py-0.5 rounded-md ${typeColors[p.type]} text-center font-bold`}>
+                                    {p.type.toUpperCase()}
+                                </div>
+                                <img
+                                    src={p.image}
+                                    alt={p.name}
+                                    className="w-full h-24 object-contain"
+                                />
+                                <p className="tracking-wider text-sm capitalize font-bold mt-1 text-center">{p.name.toUpperCase()}</p>
+                            </Link>
+                        ))}
                     </div>
-                </div >
-            </div >
+                </>}
         </>
     )
 }
