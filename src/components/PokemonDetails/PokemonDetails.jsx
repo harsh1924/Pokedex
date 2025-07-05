@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars */
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom"
 import LoadingState from "../LoadingState";
+import { motion } from "motion/react";
 
 const typeColors = {
     fire: "bg-[#F08030]",
@@ -25,6 +27,7 @@ const typeColors = {
 };
 
 const abilityColors = {
+    competitive: "bg-[#FF69B4]",
     "inner-focus": "bg-[#C7489D]",
     "illuminate": "bg-[#FFE96B]",
     "thick-fat": "bg-[#8CB7E0]",
@@ -69,8 +72,7 @@ const abilityColors = {
     swift_swim: "bg-cyan-500",
     chlorophyll: "bg-lime-500",
     volt_absorb: "bg-blue-400",
-    flame_body: "bg-rose-500",
-    natural_cure: "bg-emerald-500",
+    "flame-body": "bg-rose-500",
     "magma-armor": "bg-[#1150DD]",
     "water-veil": "bg-[#6D810B]",
     "magnet-pull": "bg-[#B784EE]",
@@ -196,11 +198,14 @@ const abilityColors = {
 
 export const PokemonDetails = () => {
     const { id } = useParams();
-    const [pokemon, setPokemon] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const [relatedPokemon, setRelatedPokemon] = useState([]);
+    const [pokemon, setPokemon] = useState([]);
+    const [captureRate, setCaptureRate] = useState(null);
     const [evolutionLine, setEvolutionLine] = useState([]);
+    const [relatedPokemon, setRelatedPokemon] = useState([]);
+    const [baseFriendship, setBaseFriendship] = useState(null);
+    const [damageRelations, setDamageRelations] = useState(null);
 
     async function DownloadPokemon() {
         const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
@@ -216,6 +221,11 @@ export const PokemonDetails = () => {
             stats: data.stats,
             types: data.types
         });
+
+        // Fetch species data to get capture rate
+        const speciesRes = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
+        setCaptureRate(speciesRes.data.capture_rate);
+
         setIsLoading(false);
     }
 
@@ -282,28 +292,192 @@ export const PokemonDetails = () => {
         }
     }
 
+    function getCaptureRateInfo(rate) {
+        if (rate >= 200) {
+            return {
+                label: "Very Easy",
+                color: "bg-green-500",
+                emoji: "🟢",
+            };
+        } else if (rate >= 100) {
+            return {
+                label: "Moderate",
+                color: "bg-yellow-500",
+                emoji: "🟡",
+            };
+        } else {
+            return {
+                label: "Difficult",
+                color: "bg-red-500",
+                emoji: "🔴",
+            };
+        }
+    }
+
+    async function fetchSpeciesDetails(pokemonName) {
+        try {
+            const speciesRes = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${pokemonName}`);
+            setBaseFriendship(speciesRes.data.base_happiness);
+        } catch (err) {
+            console.error("Species fetch failed", err);
+        }
+    }
+
+    async function fetchDamageRelations(types) {
+        const relations = {
+            double_damage_from: new Set(),
+            half_damage_from: new Set(),
+            no_damage_from: new Set(),
+
+            double_damage_to: new Set(),
+            half_damage_to: new Set(),
+            no_damage_to: new Set(),
+        };
+
+        for (const type of types) {
+            const res = await axios.get(`https://pokeapi.co/api/v2/type/${type}`);
+            const rel = res.data.damage_relations;
+
+            rel.double_damage_from.forEach(t => relations.double_damage_from.add(t.name));
+            rel.half_damage_from.forEach(t => relations.half_damage_from.add(t.name));
+            rel.no_damage_from.forEach(t => relations.no_damage_from.add(t.name));
+
+            rel.double_damage_to.forEach(t => relations.double_damage_to.add(t.name));
+            rel.half_damage_to.forEach(t => relations.half_damage_to.add(t.name));
+            rel.no_damage_to.forEach(t => relations.no_damage_to.add(t.name));
+        }
+
+        return {
+            double_damage_from: Array.from(relations.double_damage_from),
+            half_damage_from: Array.from(relations.half_damage_from),
+            no_damage_from: Array.from(relations.no_damage_from),
+
+            double_damage_to: Array.from(relations.double_damage_to),
+            half_damage_to: Array.from(relations.half_damage_to),
+            no_damage_to: Array.from(relations.no_damage_to),
+        };
+    }
 
     useEffect(() => {
         DownloadPokemon();
         if (pokemon.types) {
             const typesArray = pokemon.types.map(t => t.type.name);
             DownloadRelatedPokemon(typesArray);
+            fetchDamageRelations(typesArray).then(setDamageRelations);
         }
         fetchEvolutionChain(id);
+        fetchSpeciesDetails(id);
     }, [pokemon])
+
+
     return (
         <>
             {isLoading ? <LoadingState /> :
                 <>
-                    <div className="mx-auto mt-10 p-6 rounded-xl bg-white border-gray-200">
+                    <div className="mx-auto mt-10 p-6 rounded-xl bg-white">
                         <div className="flex flex-col md:flex-row gap-8">
-                            {/* Left: Image */}
                             <div className="flex-1 flex flex-col items-center">
+                                {/* Left: Image */}
                                 <img
                                     src={pokemon.image}
                                     alt={pokemon.name}
                                     className="w-60 h-60 object-contain"
                                 />
+
+                                {/* Mobile Details Section */}
+                                <div className="flex-1 md:hidden">
+                                    <h2 className="text-3xl font-bold capitalize mb-2">
+                                        #{id.toString().padStart(3, "0")} {pokemon.name}
+                                    </h2>
+
+                                    {/* Types */}
+                                    <div className="flex gap-2 mb-4">
+                                        {pokemon.types?.slice(0, 10).map(t => (
+                                            <div
+                                                className={`text-white px-3 py-1 rounded-md text-xs font-semibold ${typeColors[t.type.name]}`}
+                                                key={t.type.name}
+                                            >
+                                                {t.type.name.charAt(0).toUpperCase() + t.type.name.slice(1)}
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* About Section */}
+                                    <div className="mb-4">
+                                        <h3 className="font-bold text-lg mb-1">About</h3>
+
+                                        <div className="text-sm text-gray-700 space-y-1">
+                                            {/* Height and Weight */}
+                                            <p>
+                                                <strong>Height:</strong> {pokemon.height / 10} m
+                                            </p>
+                                            <p>
+                                                <strong>Weight:</strong> {pokemon.weight / 10} kg
+                                            </p>
+
+                                            {/* Abilities */}
+                                            <div className="flex gap-1">
+                                                <strong>Abilities:</strong>
+                                                {pokemon.abilities?.map(a => (
+                                                    <div
+                                                        className={`tracking-wider px-3 py-1 rounded-md text-xs font-semibold ${abilityColors[a.ability.name]} text-white`}
+                                                        key={a.ability.slot}
+                                                    >
+                                                        {a.ability.name.charAt(0).toUpperCase() + a.ability.name.slice(1)}
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Capture Rate */}
+                                            {captureRate !== null && (() => {
+                                                const info = getCaptureRateInfo(captureRate);
+                                                const percentage = Math.round((captureRate / 255) * 100);
+
+                                                return (
+                                                    <div className="mt-2">
+                                                        <p className="font-medium mb-1">Capture Rate:</p>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className={`px-2 py-0.5 text-white text-xs rounded ${info.color}`}>
+                                                                {info.emoji} {captureRate}/255
+                                                            </span>
+                                                            <span className="text-xs text-gray-600 italic">({info.label})</span>
+                                                        </div>
+                                                        <div className="w-full h-2 bg-gray-200 rounded">
+                                                            <div
+                                                                className={`h-full rounded ${info.color}`}
+                                                                style={{ width: `${percentage}%` }}
+                                                            ></div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })()}
+
+                                        </div>
+                                    </div>
+
+                                    {/* Stats Section */}
+                                    <div>
+                                        <h3 className="font-bold text-lg mb-2">Base Stats</h3>
+                                        <div className="space-y-2">
+                                            {pokemon.stats?.map((stat, index) => (
+                                                <div key={index}>
+                                                    <div className="flex justify-between text-sm font-medium text-gray-800">
+                                                        <span className="uppercase">{stat.stat.name.replace('-', ' ')}</span>
+                                                        <span>{stat.base_stat}</span>
+                                                    </div>
+                                                    <div className="w-full h-3 bg-gray-200 rounded">
+                                                        <motion.div
+                                                            initial={{ scaleX: 0 }}
+                                                            animate={{ scaleX: `${Math.min(stat.base_stat, 100)}%` }}
+                                                            transition={{ duration: 0.8, ease: "easeInOut" }}
+                                                            className="h-3 bg-orange-500 rounded origin-left"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
 
                                 {/* Moves Section */}
                                 <div className="w-full mt-6">
@@ -323,7 +497,7 @@ export const PokemonDetails = () => {
                             </div>
 
                             {/* Right: Info */}
-                            <div className="flex-1">
+                            <div className="md:flex flex-1 flex-col hidden">
                                 <h2 className="text-3xl font-bold capitalize mb-2">
                                     #{id.toString().padStart(3, "0")} {pokemon.name}
                                 </h2>
@@ -343,14 +517,19 @@ export const PokemonDetails = () => {
                                 {/* About Section */}
                                 <div className="mb-4">
                                     <h3 className="font-bold text-lg mb-1">About</h3>
+
+                                    {/* Abilities, height, weight */}
                                     <div className="text-sm text-gray-700 space-y-1">
+                                        {/* Height and Weight */}
                                         <p>
                                             <strong>Height:</strong> {pokemon.height / 10} m
                                         </p>
                                         <p>
                                             <strong>Weight:</strong> {pokemon.weight / 10} kg
                                         </p>
-                                        <div className="flex gap-1">
+
+                                        {/* Abilities */}
+                                        <div className="flex gap-1 items-center">
                                             <strong>Abilities:</strong>
                                             {pokemon.abilities?.map(a => (
                                                 <div
@@ -361,12 +540,40 @@ export const PokemonDetails = () => {
                                                 </div>
                                             ))}
                                         </div>
+
+                                        {/* Capture Rate */}
+                                        {captureRate !== null && (() => {
+                                            const info = getCaptureRateInfo(captureRate);
+                                            const percentage = Math.round((captureRate / 255) * 100);
+
+                                            return (
+                                                <div className="mt-2">
+                                                    <p className="font-medium mb-1">Capture Rate:</p>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className={`px-2 py-0.5 text-white text-xs rounded ${info.color}`}>
+                                                            {info.emoji} {captureRate}/255
+                                                        </span>
+                                                        <span className="text-xs text-gray-600 italic">({info.label})</span>
+                                                    </div>
+                                                    <div className="w-full h-2 bg-gray-200 rounded">
+                                                        <div
+                                                            className={`h-full rounded ${info.color}`}
+                                                            style={{ width: `${percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+
                                     </div>
                                 </div>
 
                                 {/* Stats Section */}
-                                <div className="mt-21">
-                                    <h3 className="font-bold text-lg mb-2">Base Stats</h3>
+                                <div>
+                                    <h3 className="text-lg font-bold flex items-center gap-2">
+                                        📊 Base Stats
+                                    </h3>
+
                                     <div className="space-y-2">
                                         {pokemon.stats?.map((stat, index) => (
                                             <div key={index}>
@@ -375,10 +582,12 @@ export const PokemonDetails = () => {
                                                     <span>{stat.base_stat}</span>
                                                 </div>
                                                 <div className="w-full h-3 bg-gray-200 rounded">
-                                                    <div
-                                                        className="h-3 hover:shadow transition-all duration-300 ease-in-out cursor-pointer hover:shadow-orange-600 bg-orange-500 rounded"
-                                                        style={{ width: `${Math.min(stat.base_stat, 100)}%` }}
-                                                    ></div>
+                                                    <motion.div
+                                                        initial={{ scaleX: 0 }}
+                                                        animate={{ scaleX: `${Math.min(stat.base_stat, 100)}%` }}
+                                                        transition={{ duration: 0.8, ease: "easeInOut" }}
+                                                        className="h-3 bg-orange-500 rounded origin-left"
+                                                    />
                                                 </div>
                                             </div>
                                         ))}
@@ -387,9 +596,12 @@ export const PokemonDetails = () => {
                             </div>
                         </div >
                     </div>
+
+                    <div className="h-[1px] bg-gray-300 mt-3" />
+
                     {/* Evolution Line */}
                     {evolutionLine.length > 1 && (
-                        <div className="mt-10">
+                        <div className="p-10 bg-gray-100 shadow">
                             <h3 className="font-black text-4xl text-center">Evolution Line</h3>
                             <div className="flex items-center justify-center gap-5 overflow-x-auto py-4">
                                 {evolutionLine.map((poke, index) => (
@@ -413,10 +625,76 @@ export const PokemonDetails = () => {
                                     </div>
                                 ))}
                             </div>
-
                         </div>
                     )}
-                    <h1 className="font-black text-4xl text-center my-5">
+
+                    {/* Damage Relation from another types */}
+                    {damageRelations && (
+                        <div className="mt-12 px-4">
+                            <h2 className="text-4xl font-extrabold text-center mb-6">Damage Relations</h2>
+
+                            <div className="grid md:grid-cols-2 gap-6">
+                                {/* Defensive Section */}
+                                <div className="bg-white shadow-xl rounded-lg p-6">
+                                    <h3 className="text-2xl font-semibold text-blue-600 mb-4 flex items-center gap-2">
+                                        🛡️ Defensive
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {["double_damage_from", "half_damage_from", "no_damage_from"].map(key => (
+                                            <div key={key}>
+                                                <p className="text-sm font-semibold mb-2 capitalize text-gray-700">
+                                                    {key.replace(/_/g, " ")}
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {damageRelations[key].length > 0 ? damageRelations[key].map(t => (
+                                                        <span
+                                                            key={t}
+                                                            className={`px-3 py-1 rounded-md text-white text-xs font-semibold shadow ${typeColors[t] || "bg-gray-400"}`}
+                                                        >
+                                                            {t.toUpperCase()}
+                                                        </span>
+                                                    )) : (
+                                                        <span className="text-gray-400 italic text-sm">None</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Offensive Section */}
+                                <div className="bg-white shadow-xl rounded-lg p-6">
+                                    <h3 className="text-2xl font-semibold text-red-600 mb-4 flex items-center gap-2">
+                                        ⚔️ Offensive
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {["double_damage_to", "half_damage_to", "no_damage_to"].map(key => (
+                                            <div key={key}>
+                                                <p className="text-sm font-semibold mb-2 capitalize text-gray-700">
+                                                    {key.replace(/_/g, " ")}
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {damageRelations[key].length > 0 ? damageRelations[key].map(t => (
+                                                        <span
+                                                            key={t}
+                                                            className={`px-3 py-1 rounded-md text-white text-xs font-semibold shadow ${typeColors[t] || "bg-gray-400"}`}
+                                                        >
+                                                            {t.toUpperCase()}
+                                                        </span>
+                                                    )) : (
+                                                        <span className="text-gray-400 italic text-sm">None</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Related Pokemon */}
+                    <h1 className="font-black text-4xl text-center mt-10 pb-5">
                         Related Pokémon
                     </h1>
                     <div className="flex flex-wrap px-2 gap-5 justify-center bg-[#f3f7e6] py-4">
@@ -438,8 +716,11 @@ export const PokemonDetails = () => {
                                 <p className="tracking-wider text-sm capitalize font-bold mt-1 text-center">{p.name.toUpperCase()}</p>
                             </Link>
                         ))}
+
+
                     </div>
-                </>}
+                </>
+            }
         </>
     )
 }
