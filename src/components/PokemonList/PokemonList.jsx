@@ -33,9 +33,10 @@ const typeColors = {
     fighting: "bg-[#C03028]",
 };
 
-const PokemonList = () => {
-    const [pokemonList, setPokemonList] = useState([]);
+const PokemonList = ({ search }) => {
     const [isLoading, setIsLoading] = useState(true);
+    const [pokemonList, setPokemonList] = useState([]);
+    const [allPokemonList, setAllPokemonList] = useState([]);
 
     const [total, setTotal] = useState(0);
     const [currentPage, setCurrentPage] = useState(() => {
@@ -53,6 +54,9 @@ const PokemonList = () => {
         } else {
             DownloadPokemons();
         }
+        axios.get(`https://pokeapi.co/api/v2/pokemon?limit=100000&offset=0`)
+            .then(res => setAllPokemonList(res.data.results))
+            .catch(err => console.error("Error fetching all Pokémon", err));
     }, [currentPage, typeFilter]);
 
     async function DownloadPokemons() {
@@ -119,19 +123,34 @@ const PokemonList = () => {
                 ))}
             </div>
 
-            <div className='flex flex-wrap gap-4 justify-center'>
+            <div className='flex flex-wrap gap-4 justify-center h-[700px] overflow-scroll scrollbar-hide'>
                 {isLoading ? (
                     <LoadingState />
                 ) : (
-                    pokemonList.map(pokemon => (
-                        <Pokemon
-                            name={pokemon.name}
-                            image={pokemon.image}
-                            id={pokemon.id}
-                            key={pokemon.id}
-                            types={pokemon.types}
-                        />
-                    ))
+                    <>
+                        {search === 'all' ? pokemonList.map(pokemon => (
+                            <Pokemon
+                                name={pokemon.name}
+                                image={pokemon.image}
+                                id={pokemon.id}
+                                key={pokemon.id}
+                                types={pokemon.types}
+                            />
+                        )) : allPokemonList
+                            .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+                            .slice(0, 20) // optionally limit results
+                            .map((p, idx) => (
+                                <Pokemon
+                                    key={p.name}
+                                    id={p.url.split("/")[6]}
+                                    name={p.name}
+                                    image={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${p.url.split("/")[6]}.png`}
+                                    types={[]} // optional — you can fetch more detail if needed
+                                />
+                            ))
+
+                        }
+                    </>
                 )}
             </div>
 

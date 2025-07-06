@@ -1,4 +1,3 @@
-/* eslint-disable no-unused-vars */
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom"
@@ -210,11 +209,15 @@ export const PokemonDetails = () => {
 
     async function DownloadPokemon() {
         const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
-        // console.log(response.data);
+        console.log(response.data);
         const data = response.data;
+        const image =
+            data.sprites.other?.['official-artwork']?.front_default ||
+            data.sprites.other?.dream_world?.front_default ||
+            data.sprites.front_default;
         setPokemon({
             name: data.name,
-            image: data.sprites.other ? data.sprites.other.dream_world.front_default : data.sprites.front_shiny,
+            image,
             weight: data.weight,
             height: data.height,
             abilities: data.abilities,
