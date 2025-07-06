@@ -745,7 +745,7 @@ export const PokemonDetails = () => {
                             <Link
                                 to={`/pokemon/${p.id}`}
                                 key={p.name}
-                                className="w-32 cursor-pointer"
+                                className={`px-4 cursor-pointer rounded-md shadow-md transition-transform hover:scale-105 text-white ${typeColors[p.types[0]]}`}
                                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                             >
                                 <div className="flex justify-center gap-1">

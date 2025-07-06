@@ -61,6 +61,7 @@ export const StrongestPokemon = () => {
                         totalStats: p.total,
                         isLegendary: species.is_legendary,
                         isMythical: species.is_mythical,
+                        stats: pokemon.stats
                     };
                 })
             );
@@ -73,7 +74,7 @@ export const StrongestPokemon = () => {
 
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {topList.map((p) => (
+            {topList?.map((p) => (
                 <Link
                     to={`/pokemon/${p.id}`}
                     key={p.id}
@@ -105,9 +106,26 @@ export const StrongestPokemon = () => {
                             </span>
                         </div>
                     )}
+
+                    {/* Stats Section */}
+                    <div className="mt-4 space-y-1">
+                        {p.stats.map((statObj, index) => (
+                            <div key={index}>
+                                <div className="flex justify-between text-sm font-medium text-gray-800">
+                                    <span className="capitalize">{statObj.stat.name.replace('-', ' ')}</span>
+                                    <span>{statObj.base_stat}</span>
+                                </div>
+                                <div className="w-full h-2 bg-gray-200 rounded">
+                                    <div
+                                        className="h-2 bg-orange-500 rounded"
+                                        style={{ width: `${Math.min(statObj.base_stat, 150)}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </Link>
             ))}
         </div>
-
-    )
-}
+    );
+};
