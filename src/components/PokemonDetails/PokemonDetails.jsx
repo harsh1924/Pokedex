@@ -202,6 +202,7 @@ export const PokemonDetails = () => {
 
     const [pokemon, setPokemon] = useState([]);
     const [captureRate, setCaptureRate] = useState(null);
+    const [visibleCount, setVisibleCount] = useState(24);
     const [evolutionLine, setEvolutionLine] = useState([]);
     const [relatedPokemon, setRelatedPokemon] = useState([]);
     const [baseFriendship, setBaseFriendship] = useState(null);
@@ -230,32 +231,44 @@ export const PokemonDetails = () => {
     }
 
     async function DownloadRelatedPokemon(typesArray) {
-        const allRelated = [];
+        const allPokemonMap = new Map();
 
         for (const type of typesArray) {
             const response = await axios.get(`https://pokeapi.co/api/v2/type/${type}`);
             const data = response.data;
 
-            const related = data.pokemon.map(p => {
-                const urlParts = p.pokemon.url.split("/");
-                const id = urlParts[urlParts.length - 2];
+            for (const p of data.pokemon) {
+                const id = p.pokemon.url.split("/").slice(-2, -1)[0];
 
-                return {
-                    name: p.pokemon.name,
-                    id,
-                    image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
-                    type: type, // current type in this loop
-                };
-            });
-
-            allRelated.push(...related);
+                // Avoid duplicates
+                if (!allPokemonMap.has(id)) {
+                    allPokemonMap.set(id, {
+                        name: p.pokemon.name,
+                        id,
+                        url: `https://pokeapi.co/api/v2/pokemon/${id}`,
+                    });
+                }
+            }
         }
 
-        // Optionally remove duplicates by ID
-        const uniqueRelated = Array.from(new Map(allRelated.map(p => [p.id, p])).values());
+        // Now fetch actual types for each unique Pokémon
+        const allRelated = [];
+        const promises = Array.from(allPokemonMap.values()).map(async (poke) => {
+            const response = await axios.get(poke.url);
+            const types = response.data.types.map(t => t.type.name); // real types
 
-        setRelatedPokemon(uniqueRelated);
+            allRelated.push({
+                name: poke.name,
+                id: poke.id,
+                image: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${poke.id}.png`,
+                types, // this is now an array, e.g. ['poison', 'flying']
+            });
+        });
+
+        await Promise.all(promises);
+        setRelatedPokemon(allRelated);
     }
+
 
     async function fetchEvolutionChain(pokemonName) {
         try {
@@ -299,20 +312,33 @@ export const PokemonDetails = () => {
                 color: "bg-green-500",
                 emoji: "🟢",
             };
+        } else if (rate >= 150) {
+            return {
+                label: "Easy",
+                color: "bg-lime-500",
+                emoji: "🟩",
+            };
         } else if (rate >= 100) {
             return {
                 label: "Moderate",
                 color: "bg-yellow-500",
                 emoji: "🟡",
             };
+        } else if (rate >= 50) {
+            return {
+                label: "Hard",
+                color: "bg-orange-500",
+                emoji: "🟠",
+            };
         } else {
             return {
-                label: "Difficult",
+                label: "Very Hard",
                 color: "bg-red-500",
                 emoji: "🔴",
             };
         }
     }
+
 
     async function fetchSpeciesDetails(pokemonName) {
         try {
@@ -360,15 +386,22 @@ export const PokemonDetails = () => {
 
     useEffect(() => {
         DownloadPokemon();
-        if (pokemon.types) {
+    }, [id]);
+
+    useEffect(() => {
+        if (pokemon?.types?.length) {
             const typesArray = pokemon.types.map(t => t.type.name);
             DownloadRelatedPokemon(typesArray);
             fetchDamageRelations(typesArray).then(setDamageRelations);
         }
-        fetchEvolutionChain(id);
-        fetchSpeciesDetails(id);
-    }, [pokemon])
+    }, [pokemon]);
 
+    useEffect(() => {
+        if (id) {
+            fetchEvolutionChain(id);
+            fetchSpeciesDetails(id);
+        }
+    }, [id]);
 
     return (
         <>
@@ -484,12 +517,13 @@ export const PokemonDetails = () => {
                                     <h3 className="text-lg font-bold mb-2">Moves</h3>
                                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto pr-1">
                                         {pokemon.moves?.slice(0, 24).map((m, index) => (
-                                            <div
+                                            <Link
+                                                to={`/move/${m.move.name}`}
                                                 key={index}
                                                 className="bg-gray-100 text-gray-800 rounded-md px-3 py-2 text-xs font-semibold capitalize shadow hover:bg-gray-200 transition cursor-pointer"
                                             >
                                                 {m.move.name.replace(/-/g, " ")}
-                                            </div>
+                                            </Link>
                                         ))}
                                     </div>
                                 </div>
@@ -574,23 +608,29 @@ export const PokemonDetails = () => {
                                         📊 Base Stats
                                     </h3>
 
-                                    <div className="space-y-2">
-                                        {pokemon.stats?.map((stat, index) => (
-                                            <div key={index}>
-                                                <div className="flex justify-between text-sm font-medium text-gray-800">
-                                                    <span className="uppercase">{stat.stat.name.replace('-', ' ')}</span>
-                                                    <span>{stat.base_stat}</span>
+                                    <div className="space-y-3">
+                                        {pokemon.stats?.map((stat, index) => {
+                                            const value = stat.base_stat;
+                                            const barColor = value >= 100 ? "bg-red-500" : "bg-orange-500";
+
+                                            return (
+                                                <div key={index}>
+                                                    <div className="flex justify-between text-sm font-medium text-gray-700">
+                                                        <span className="uppercase tracking-wide">{stat.stat.name.replace('-', ' ')}</span>
+                                                        <span className="font-semibold text-gray-900">{value}</span>
+                                                    </div>
+
+                                                    <div className="w-full h-3 bg-gray-100 rounded overflow-hidden">
+                                                        <motion.div
+                                                            initial={{ scaleX: 0 }}
+                                                            animate={{ scaleX: Math.min(value, 150) / 150 }}
+                                                            transition={{ duration: 0.6, ease: "easeOut" }}
+                                                            className={`h-3 ${barColor} rounded origin-left`}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="w-full h-3 bg-gray-200 rounded">
-                                                    <motion.div
-                                                        initial={{ scaleX: 0 }}
-                                                        animate={{ scaleX: `${Math.min(stat.base_stat, 100)}%` }}
-                                                        transition={{ duration: 0.8, ease: "easeInOut" }}
-                                                        className="h-3 bg-orange-500 rounded origin-left"
-                                                    />
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
@@ -698,26 +738,47 @@ export const PokemonDetails = () => {
                         Related Pokémon
                     </h1>
                     <div className="flex flex-wrap px-2 gap-5 justify-center bg-[#f3f7e6] py-4">
-                        {relatedPokemon?.map(p => (
+                        {relatedPokemon.slice(0, visibleCount).map(p => (
                             <Link
                                 to={`/pokemon/${p.id}`}
                                 key={p.name}
-                                className="w-32 text-centercursor-pointer"
+                                className="w-32 cursor-pointer"
                                 onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                             >
-                                <div className={`text-white text-xs mt-1 px-2 py-0.5 rounded-md ${typeColors[p.type]} text-center font-bold`}>
-                                    {p.type.toUpperCase()}
+                                <div className="flex justify-center gap-1">
+                                    {p.types.map(t => (
+                                        <div
+                                            key={t}
+                                            className={`text-white text-xs mt-1 px-2 py-0.5 rounded-md ${typeColors[t]} text-center font-bold`}
+                                        >
+                                            {t.toUpperCase()}
+                                        </div>
+                                    ))}
                                 </div>
                                 <img
                                     src={p.image}
                                     alt={p.name}
                                     className="w-full h-24 object-contain"
                                 />
-                                <p className="tracking-wider text-sm capitalize font-bold mt-1 text-center">{p.name.toUpperCase()}</p>
+                                <p className="tracking-wider text-sm capitalize font-bold mt-1 text-center">
+                                    {p.name.toUpperCase()}
+                                </p>
                             </Link>
                         ))}
+                    </div>
 
-
+                    {/* Load More Button */}
+                    <div className="bg-[#f3f7e6]">
+                        {visibleCount < relatedPokemon.length && (
+                            <div className="text-center py-4">
+                                <button
+                                    onClick={() => setVisibleCount(prev => prev + 24)}
+                                    className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-full border-2 border-red-200 shadow-red-500 cursor-pointer shadow-md transition duration-300"
+                                >
+                                    Load More
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </>
             }
