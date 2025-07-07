@@ -33,6 +33,27 @@ const typeColors = {
     fighting: "bg-[#C03028]",
 };
 
+const typeIcons = {
+    bug: "🐛",
+    dragon: "🐉",
+    fairy: "✨",
+    fire: "🔥",
+    ghost: "👻",
+    grass: "🌿",
+    ground: "🌍",
+    ice: "❄️",
+    electric: "⚡",
+    fighting: "🥊",
+    flying: "🕊️",
+    normal: "⚪",
+    poison: "☠️",
+    psychic: "🔮",
+    rock: "🪨",
+    steel: "⚙️",
+    dark: "🌑",
+    water: "💧"
+};
+
 const PokemonList = ({ search }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [pokemonList, setPokemonList] = useState([]);
@@ -116,9 +137,10 @@ const PokemonList = ({ search }) => {
                     <button
                         key={type}
                         onClick={() => setTypeFilter(type)} // your filter logic
-                        className={`rounded-full px-4 py-2 w-full text-white font-bold tracking-wide text-lg transition-transform hover:scale-105 shadow ${typeColors[type]} cursor-pointer`}
+                        className={`rounded-full px-4 py-2 w-full text-white font-bold tracking-wide text-lg transition-transform hover:scale-105 shadow ${typeColors[type]} cursor-pointer flex gap-1`}
                     >
-                        {type.toUpperCase()}
+                        <span>{type.toUpperCase()}</span>
+                        <span>{typeIcons[type]}</span>
                     </button>
                 ))}
             </div>
