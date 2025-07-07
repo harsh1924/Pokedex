@@ -93,9 +93,6 @@ export default function ParadoxPokemon() {
                                         {t.type.name}
                                     </span>
                                 ))}
-                                <span className="ml-1 text-xs font-bold px-2 py-1 rounded-full uppercase text-black bg-pink-400">
-                                    Paradox
-                                </span>
                             </div>
                         </li>
                     ))}
